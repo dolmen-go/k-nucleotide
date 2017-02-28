@@ -30,20 +30,37 @@ var toChar = strings.NewReplacer(
 	string(2), "T",
 )
 
-var empty string
+type job struct {
+	job    func(dna []byte) string
+	result chan string
+}
 
-var jobs = []struct {
-	length   int
-	sequence string
-	result   chan string
-}{
-	{1, empty, make(chan string, 1)},
-	{2, empty, make(chan string, 1)},
-	{0, "GGT", make(chan string, 1)},
-	{0, "GGTA", make(chan string, 1)},
-	{0, "GGTATT", make(chan string, 1)},
-	{0, "GGTATTTTAATT", make(chan string, 1)},
-	{0, "GGTATTTTAATTTATAGT", make(chan string, 1)},
+func frequencyReportJob(length int) job {
+	return job{
+		job: func(dna []byte) string {
+			return frequencyReport(dna, length)
+		},
+		result: make(chan string, 1),
+	}
+}
+
+func sequenceReportJob(sequence string) job {
+	return job{
+		job: func(dna []byte) string {
+			return sequenceReport(dna, sequence)
+		},
+		result: make(chan string, 1),
+	}
+}
+
+var jobs = []job{
+	frequencyReportJob(1),
+	frequencyReportJob(2),
+	sequenceReportJob("GGT"),
+	sequenceReportJob("GGTA"),
+	sequenceReportJob("GGTATT"),
+	sequenceReportJob("GGTATTTTAATT"),
+	sequenceReportJob("GGTATTTTAATTTATAGT"),
 }
 
 func main() {
@@ -69,11 +86,7 @@ func scheduler(dna []byte) {
 
 func worker(dna []byte, command <-chan int) {
 	for k := range command {
-		if jobs[k].length > 0 {
-			jobs[k].result <- frequencyReport(dna, jobs[k].length)
-		} else {
-			jobs[k].result <- sequenceReport(dna, jobs[k].sequence)
-		}
+		jobs[k].result <- jobs[k].job(dna)
 	}
 }
 
