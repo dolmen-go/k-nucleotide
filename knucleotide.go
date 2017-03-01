@@ -164,6 +164,7 @@ func frequencyReport(dna []byte, length int) string {
 	sort.Sort(sortedSeqs)
 
 	var buf bytes.Buffer
+	buf.Grow((8 + length) * len(sortedSeqs))
 	for _, sequence := range sortedSeqs {
 		buf.WriteString(fmt.Sprintf(
 			"%v %.3f\n", sequence.nucs,
