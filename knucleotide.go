@@ -197,10 +197,11 @@ func count32(dna []byte, length int) map[uint32]*uint32 {
 		key = key<<2&mask | uint32(dna[index])
 		pointer := counts[key]
 		if pointer == nil {
-			pointer = new(uint32)
-			counts[key] = pointer
+			n := uint32(1)
+			counts[key] = &n
+		} else {
+			*pointer++
 		}
-		*pointer++
 	}
 	return counts
 }
@@ -213,10 +214,11 @@ func count64(dna []byte, length int) map[uint64]*uint32 {
 		key = key<<2&mask | uint64(dna[index])
 		pointer := counts[key]
 		if pointer == nil {
-			pointer = new(uint32)
-			counts[key] = pointer
+			n := uint32(1)
+			counts[key] = &n
+		} else {
+			*pointer++
 		}
-		*pointer++
 	}
 	return counts
 }
