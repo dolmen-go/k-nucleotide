@@ -130,9 +130,11 @@ func findThree() (in *bufio.Reader, lineCount int) {
 	return
 }
 
+type counter uint32
+
 type sequence struct {
 	nucs  string
-	count uint32
+	count counter
 }
 
 type sequenceSlice []sequence
@@ -175,7 +177,7 @@ func frequencyReport(dna []byte, length int) string {
 }
 
 func sequenceReport(dna []byte, sequence string) string {
-	var pointer *uint32
+	var pointer *counter
 	if len(sequence) <= 16 {
 		counts := count32(dna, len(sequence))
 		pointer = counts[compress32([]byte(toNum.Replace(sequence)))]
@@ -183,22 +185,22 @@ func sequenceReport(dna []byte, sequence string) string {
 		counts := count64(dna, len(sequence))
 		pointer = counts[compress64([]byte(toNum.Replace(sequence)))]
 	}
-	var sequenceCount uint32
+	var sequenceCount counter
 	if pointer != nil {
 		sequenceCount = *pointer
 	}
 	return fmt.Sprintf("%v\t%v", sequenceCount, sequence)
 }
 
-func count32(dna []byte, length int) map[uint32]*uint32 {
-	counts := make(map[uint32]*uint32)
+func count32(dna []byte, length int) map[uint32]*counter {
+	counts := make(map[uint32]*counter)
 	key := compress32(dna[0 : length-1])
 	mask := uint32(1)<<uint(2*length) - 1
 	for index := length - 1; index < len(dna); index++ {
 		key = key<<2&mask | uint32(dna[index])
 		pointer := counts[key]
 		if pointer == nil {
-			n := uint32(1)
+			n := counter(1)
 			counts[key] = &n
 		} else {
 			*pointer++
@@ -207,15 +209,15 @@ func count32(dna []byte, length int) map[uint32]*uint32 {
 	return counts
 }
 
-func count64(dna []byte, length int) map[uint64]*uint32 {
-	counts := make(map[uint64]*uint32)
+func count64(dna []byte, length int) map[uint64]*counter {
+	counts := make(map[uint64]*counter)
 	key := compress64(dna[0 : length-1])
 	mask := uint64(1)<<uint(2*length) - 1
 	for index := length - 1; index < len(dna); index++ {
 		key = key<<2&mask | uint64(dna[index])
 		pointer := counts[key]
 		if pointer == nil {
-			n := uint32(1)
+			n := counter(1)
 			counts[key] = &n
 		} else {
 			*pointer++
