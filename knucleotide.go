@@ -23,13 +23,6 @@ var toNum = strings.NewReplacer(
 	"T", string(2),
 )
 
-var toChar = strings.NewReplacer(
-	string(0), "A",
-	string(1), "C",
-	string(3), "G",
-	string(2), "T",
-)
-
 type job struct {
 	run    func(dna []byte)
 	result chan string
@@ -164,7 +157,7 @@ func frequencyReport(dna []byte, length int) string {
 	for num, pointer := range counts {
 		sortedSeqs = append(
 			sortedSeqs,
-			sequence{toChar.Replace(string(decompress32(num, length))), *pointer},
+			sequence{decompress32(num, length), *pointer},
 		)
 	}
 	sort.Sort(sortedSeqs)
@@ -247,11 +240,11 @@ func compress32(sequence []byte) uint32 {
 	return num
 }
 
-func decompress32(num uint32, length int) (sequence []byte) {
-	sequence = make([]byte, length)
+func decompress32(num uint32, length int) string {
+	sequence := make([]byte, length)
 	for i := 0; i < length; i++ {
-		sequence[length-i-1] = byte(num & 3)
+		sequence[length-i-1] = "ACTG"[num&3]
 		num = num >> 2
 	}
-	return
+	return string(sequence)
 }
