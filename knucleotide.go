@@ -1,7 +1,7 @@
 /* The Computer Language Benchmarks Game http://benchmarksgame.alioth.debian.org/
  *
- * contributed by Bert Gijsbers.
- * based on work by Dirk Moerenhout, Jason Alan Palmer and the Go Authors.
+ * contributed by Olivier Mengué.
+ * based on work by Bert Gijsbers, Dirk Moerenhout, Jason Alan Palmer and the Go Authors.
  */
 
 package main
