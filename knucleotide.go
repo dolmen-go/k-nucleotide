@@ -13,7 +13,6 @@ import (
 	"os"
 	"runtime"
 	"sort"
-	"strings"
 )
 
 type job struct {
@@ -88,13 +87,13 @@ func dnaToBits(data []byte) {
 }
 
 func input() (data []byte) {
-	data = readThird()
+	data = readSequence(">THREE")
 	dnaToBits(data)
 	return
 }
 
-func readThird() (data []byte) {
-	in, lineCount := findThree()
+func readSequence(prefix string) (data []byte) {
+	in, lineCount := findSequence(prefix)
 	data = make([]byte, 0, lineCount*61)
 	for {
 		line, err := in.ReadSlice('\n')
@@ -110,7 +109,8 @@ func readThird() (data []byte) {
 	return
 }
 
-func findThree() (in *bufio.Reader, lineCount int) {
+func findSequence(prefix string) (in *bufio.Reader, lineCount int) {
+	pfx := []byte(prefix)
 	in = bufio.NewReaderSize(os.Stdin, 1<<20)
 	for {
 		line, err := in.ReadSlice('\n')
@@ -118,7 +118,7 @@ func findThree() (in *bufio.Reader, lineCount int) {
 			panic("read error")
 		}
 		lineCount++
-		if line[0] == '>' && strings.HasPrefix(string(line), ">THREE") {
+		if line[0] == '>' && bytes.HasPrefix(line, pfx) {
 			break
 		}
 	}
