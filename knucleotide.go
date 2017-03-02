@@ -31,26 +31,30 @@ var toChar = strings.NewReplacer(
 )
 
 type job struct {
-	job    func(dna []byte) string
+	run    func(dna []byte)
 	result chan string
 }
 
-func frequencyReportJob(length int) job {
+func makeJob(j func(dna []byte) string) job {
+	r := make(chan string, 1)
 	return job{
-		job: func(dna []byte) string {
-			return frequencyReport(dna, length)
+		run: func(dna []byte) {
+			r <- j(dna)
 		},
-		result: make(chan string, 1),
+		result: r,
 	}
 }
 
+func frequencyReportJob(length int) job {
+	return makeJob(func(dna []byte) string {
+		return frequencyReport(dna, length)
+	})
+}
+
 func sequenceReportJob(sequence string) job {
-	return job{
-		job: func(dna []byte) string {
-			return sequenceReport(dna, sequence)
-		},
-		result: make(chan string, 1),
-	}
+	return makeJob(func(dna []byte) string {
+		return sequenceReport(dna, sequence)
+	})
 }
 
 var jobs = []job{
@@ -86,7 +90,7 @@ func scheduler(dna []byte) {
 
 func worker(dna []byte, command <-chan int) {
 	for k := range command {
-		jobs[k].result <- jobs[k].job(dna)
+		jobs[k].run(dna)
 	}
 }
 
