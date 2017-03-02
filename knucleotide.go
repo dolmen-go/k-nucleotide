@@ -97,7 +97,7 @@ func readSequence(prefix string) (data []byte) {
 	data = make([]byte, 0, lineCount*61)
 	for {
 		line, err := in.ReadSlice('\n')
-		if err != nil && (line == nil || len(line) == 0) || line[0] == '>' {
+		if err != nil && len(line) == 0 || line[0] == '>' {
 			break
 		}
 		last := len(line) - 1
