@@ -16,13 +16,6 @@ import (
 	"strings"
 )
 
-var toNum = strings.NewReplacer(
-	"A", string(0),
-	"C", string(1),
-	"G", string(3),
-	"T", string(2),
-)
-
 type job struct {
 	run    func(dna []byte)
 	result chan string
@@ -87,11 +80,16 @@ func worker(dna []byte, command <-chan int) {
 	}
 }
 
-func input() (data []byte) {
-	data = readThird()
+func dnaToBits(data []byte) {
 	for i := 0; i < len(data); i++ {
+		// 'A' => 0, 'C' => 1, 'T' => 2, 'G' => 3
 		data[i] = data[i] >> 1 & 3
 	}
+}
+
+func input() (data []byte) {
+	data = readThird()
+	dnaToBits(data)
 	return
 }
 
@@ -176,12 +174,14 @@ func frequencyReport(dna []byte, length int) string {
 
 func sequenceReport(dna []byte, sequence string) string {
 	var pointer *counter
+	seq := []byte(sequence)
+	dnaToBits(seq)
 	if len(sequence) <= 16 {
 		counts := count32(dna, len(sequence))
-		pointer = counts[compress32([]byte(toNum.Replace(sequence)))]
+		pointer = counts[compress32(seq)]
 	} else {
 		counts := count64(dna, len(sequence))
-		pointer = counts[compress64([]byte(toNum.Replace(sequence)))]
+		pointer = counts[compress64(seq)]
 	}
 	var sequenceCount counter
 	if pointer != nil {
