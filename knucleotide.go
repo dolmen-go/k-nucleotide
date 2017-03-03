@@ -1,9 +1,12 @@
-/* The Computer Language Benchmarks Game http://benchmarksgame.alioth.debian.org/
- *
- * contributed by Olivier Mengué.
- * based on work by Bert Gijsbers, Dirk Moerenhout, Jason Alan Palmer and the Go Authors.
- */
+/*
+The Computer Language Benchmarks Game - k-nucleotide
+https://benchmarksgame.alioth.debian.org/u64q/knucleotide-description.html#knucleotide
 
+Contributed by Olivier Mengué.
+Based on work by Bert Gijsbers, Dirk Moerenhout, Jason Alan Palmer and the Go Authors.
+
+Repo: https://github.com/dolmen-go/k-nucleotide
+*/
 package main
 
 import (
