@@ -220,17 +220,14 @@ type seqCount struct {
 	count counter
 }
 
-type sequenceSlice []seqCount
+type seqCounts []seqCount
 
-func (ss sequenceSlice) Len() int {
-	return len(ss)
-}
+func (ss seqCounts) Len() int { return len(ss) }
 
-func (ss sequenceSlice) Swap(i, j int) {
-	ss[i], ss[j] = ss[j], ss[i]
-}
+func (ss seqCounts) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
 
-func (ss sequenceSlice) Less(i, j int) bool {
+// Less order descending by count then seq
+func (ss seqCounts) Less(i, j int) bool {
 	if ss[i].count == ss[j].count {
 		return ss[i].seq > ss[j].seq
 	}
@@ -238,8 +235,8 @@ func (ss sequenceSlice) Less(i, j int) bool {
 }
 
 func frequencyReport(dna seqBits, length int) string {
-	var sortedSeqs sequenceSlice
 	counts := dna.count32(length)
+	sortedSeqs := make(seqCounts, 0, len(counts))
 	for num, pointer := range counts {
 		sortedSeqs = append(
 			sortedSeqs,
