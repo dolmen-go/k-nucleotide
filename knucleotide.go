@@ -15,6 +15,9 @@ import (
 	"sort"
 )
 
+// Sequence of nucleotides as a string: "ACGT..."
+type seqString string
+
 type job struct {
 	run    func(dna []byte)
 	result chan string
@@ -36,7 +39,7 @@ func frequencyReportJob(length int) job {
 	})
 }
 
-func sequenceReportJob(sequence string) job {
+func sequenceReportJob(sequence seqString) job {
 	return makeJob(func(dna []byte) string {
 		return sequenceReport(dna, sequence)
 	})
@@ -133,7 +136,7 @@ func findSequence(prefix string) (in *bufio.Reader, lineCount int) {
 type counter uint32
 
 type sequence struct {
-	nucs  string
+	nucs  seqString
 	count counter
 }
 
@@ -177,7 +180,7 @@ func frequencyReport(dna []byte, length int) string {
 	return buf.String()
 }
 
-func sequenceReport(dna []byte, sequence string) string {
+func sequenceReport(dna []byte, sequence seqString) string {
 	var pointer *counter
 	seq := []byte(sequence)
 	dnaToBits(seq)
@@ -245,11 +248,11 @@ func compress32(sequence []byte) uint32 {
 	return num
 }
 
-func decompress32(num uint32, length int) string {
+func decompress32(num uint32, length int) seqString {
 	sequence := make([]byte, length)
 	for i := 0; i < length; i++ {
 		sequence[length-i-1] = "ACTG"[num&3]
 		num = num >> 2
 	}
-	return string(sequence)
+	return seqString(sequence)
 }
