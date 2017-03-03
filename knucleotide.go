@@ -215,12 +215,12 @@ func findSequence(prefix string) (in *bufio.Reader, lineCount int) {
 	return
 }
 
-type sequence struct {
-	nucs  seqString
+type seqCount struct {
+	seq   seqString
 	count counter
 }
 
-type sequenceSlice []sequence
+type sequenceSlice []seqCount
 
 func (ss sequenceSlice) Len() int {
 	return len(ss)
@@ -232,7 +232,7 @@ func (ss sequenceSlice) Swap(i, j int) {
 
 func (ss sequenceSlice) Less(i, j int) bool {
 	if ss[i].count == ss[j].count {
-		return ss[i].nucs > ss[j].nucs
+		return ss[i].seq > ss[j].seq
 	}
 	return ss[i].count > ss[j].count
 }
@@ -243,7 +243,7 @@ func frequencyReport(dna seqBits, length int) string {
 	for num, pointer := range counts {
 		sortedSeqs = append(
 			sortedSeqs,
-			sequence{num.seqString(length), *pointer},
+			seqCount{num.seqString(length), *pointer},
 		)
 	}
 	sort.Sort(sortedSeqs)
@@ -253,7 +253,7 @@ func frequencyReport(dna seqBits, length int) string {
 	var scale float32 = 100.0 / float32(len(dna)-length+1)
 	for _, sequence := range sortedSeqs {
 		buf.WriteString(fmt.Sprintf(
-			"%v %.3f\n", sequence.nucs,
+			"%v %.3f\n", sequence.seq,
 			float32(sequence.count)*scale),
 		)
 	}
