@@ -73,6 +73,42 @@ func (num seq32) seqString(length int) seqString {
 	return seqString(sequence)
 }
 
+type counter uint32
+
+func (dna seqBits) count32(length int) map[seq32]*counter {
+	counts := make(map[seq32]*counter)
+	key := dna[0 : length-1].seq32()
+	mask := seq32(1)<<uint(2*length) - 1
+	for index := length - 1; index < len(dna); index++ {
+		key = key<<2&mask | seq32(dna[index])
+		pointer := counts[key]
+		if pointer == nil {
+			n := counter(1)
+			counts[key] = &n
+		} else {
+			*pointer++
+		}
+	}
+	return counts
+}
+
+func (dna seqBits) count64(length int) map[seq64]*counter {
+	counts := make(map[seq64]*counter)
+	key := dna[0 : length-1].seq64()
+	mask := seq64(1)<<uint(2*length) - 1
+	for index := length - 1; index < len(dna); index++ {
+		key = key<<2&mask | seq64(dna[index])
+		pointer := counts[key]
+		if pointer == nil {
+			n := counter(1)
+			counts[key] = &n
+		} else {
+			*pointer++
+		}
+	}
+	return counts
+}
+
 type job struct {
 	run    func(dna seqBits)
 	result chan string
@@ -179,8 +215,6 @@ func findSequence(prefix string) (in *bufio.Reader, lineCount int) {
 	return
 }
 
-type counter uint32
-
 type sequence struct {
 	nucs  seqString
 	count counter
@@ -205,7 +239,7 @@ func (ss sequenceSlice) Less(i, j int) bool {
 
 func frequencyReport(dna seqBits, length int) string {
 	var sortedSeqs sequenceSlice
-	counts := count32(dna, length)
+	counts := dna.count32(length)
 	for num, pointer := range counts {
 		sortedSeqs = append(
 			sortedSeqs,
@@ -230,10 +264,10 @@ func sequenceReport(dna seqBits, sequence seqString) string {
 	var pointer *counter
 	seq := sequence.seqBits()
 	if len(sequence) <= 16 {
-		counts := count32(dna, len(sequence))
+		counts := dna.count32(len(sequence))
 		pointer = counts[seq.seq32()]
 	} else {
-		counts := count64(dna, len(sequence))
+		counts := dna.count64(len(sequence))
 		pointer = counts[seq.seq64()]
 	}
 	var sequenceCount counter
@@ -241,38 +275,4 @@ func sequenceReport(dna seqBits, sequence seqString) string {
 		sequenceCount = *pointer
 	}
 	return fmt.Sprintf("%v\t%v", sequenceCount, sequence)
-}
-
-func count32(dna seqBits, length int) map[seq32]*counter {
-	counts := make(map[seq32]*counter)
-	key := dna[0 : length-1].seq32()
-	mask := seq32(1)<<uint(2*length) - 1
-	for index := length - 1; index < len(dna); index++ {
-		key = key<<2&mask | seq32(dna[index])
-		pointer := counts[key]
-		if pointer == nil {
-			n := counter(1)
-			counts[key] = &n
-		} else {
-			*pointer++
-		}
-	}
-	return counts
-}
-
-func count64(dna seqBits, length int) map[seq64]*counter {
-	counts := make(map[seq64]*counter)
-	key := dna[0 : length-1].seq64()
-	mask := seq64(1)<<uint(2*length) - 1
-	for index := length - 1; index < len(dna); index++ {
-		key = key<<2&mask | seq64(dna[index])
-		pointer := counts[key]
-		if pointer == nil {
-			n := counter(1)
-			counts[key] = &n
-		} else {
-			*pointer++
-		}
-	}
-	return counts
 }
