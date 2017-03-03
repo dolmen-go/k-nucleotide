@@ -148,13 +148,13 @@ var jobs = [...]job{
 
 func main() {
 	dna := input()
-	scheduler(dna)
+	scheduleJobs(dna)
 	for i := range jobs {
 		fmt.Println(<-jobs[i].result)
 	}
 }
 
-func scheduler(dna seqBits) {
+func scheduleJobs(dna seqBits) {
 	command := make(chan int, len(jobs))
 	for i := runtime.NumCPU(); i > 0; i-- {
 		go worker(dna, command)
