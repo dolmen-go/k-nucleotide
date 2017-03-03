@@ -15,18 +15,37 @@ import (
 	"sort"
 )
 
-// Sequence of nucleotides as a string: "ACGT..."
+// seqString is a sequence of nucleotides as a string: "ACGT..."
 type seqString string
 
+// seqChars is a sequence of nucleotides as chars: 'A', 'C', 'G', 'T'...
+type seqChars []byte
+
+// seqBits is a sequence of nucleotides as 2 low bits per byte: 0, 1, 3, 2...
+type seqBits []byte
+
+// toBits converts *in-place*
+func (seq seqChars) toBits() seqBits {
+	for i := 0; i < len(seq); i++ {
+		// 'A' => 0, 'C' => 1, 'T' => 2, 'G' => 3
+		seq[i] = seq[i] >> 1 & 3
+	}
+	return seqBits(seq)
+}
+
+func (seq seqString) seqBits() seqBits {
+	return seqChars(seq).toBits()
+}
+
 type job struct {
-	run    func(dna []byte)
+	run    func(dna seqBits)
 	result chan string
 }
 
-func makeJob(j func(dna []byte) string) job {
+func makeJob(j func(dna seqBits) string) job {
 	r := make(chan string, 1)
 	return job{
-		run: func(dna []byte) {
+		run: func(dna seqBits) {
 			r <- j(dna)
 		},
 		result: r,
@@ -34,13 +53,13 @@ func makeJob(j func(dna []byte) string) job {
 }
 
 func frequencyReportJob(length int) job {
-	return makeJob(func(dna []byte) string {
+	return makeJob(func(dna seqBits) string {
 		return frequencyReport(dna, length)
 	})
 }
 
 func sequenceReportJob(sequence seqString) job {
-	return makeJob(func(dna []byte) string {
+	return makeJob(func(dna seqBits) string {
 		return sequenceReport(dna, sequence)
 	})
 }
@@ -63,7 +82,7 @@ func main() {
 	}
 }
 
-func scheduler(dna []byte) {
+func scheduler(dna seqBits) {
 	command := make(chan int, len(jobs))
 	for i := runtime.NumCPU(); i > 0; i-- {
 		go worker(dna, command)
@@ -76,28 +95,19 @@ func scheduler(dna []byte) {
 	close(command)
 }
 
-func worker(dna []byte, command <-chan int) {
+func worker(dna seqBits, command <-chan int) {
 	for k := range command {
 		jobs[k].run(dna)
 	}
 }
 
-func dnaToBits(data []byte) {
-	for i := 0; i < len(data); i++ {
-		// 'A' => 0, 'C' => 1, 'T' => 2, 'G' => 3
-		data[i] = data[i] >> 1 & 3
-	}
+func input() (data seqBits) {
+	return readSequence(">THREE").toBits()
 }
 
-func input() (data []byte) {
-	data = readSequence(">THREE")
-	dnaToBits(data)
-	return
-}
-
-func readSequence(prefix string) (data []byte) {
+func readSequence(prefix string) (data seqChars) {
 	in, lineCount := findSequence(prefix)
-	data = make([]byte, 0, lineCount*61)
+	data = make(seqChars, 0, lineCount*61)
 	for {
 		line, err := in.ReadSlice('\n')
 		if len(line) <= 1 || line[0] == '>' {
@@ -108,7 +118,7 @@ func readSequence(prefix string) (data []byte) {
 		if line[last] == '\n' {
 			line = line[0:last]
 		}
-		data = append(data, line...)
+		data = append(data, seqChars(line)...)
 
 		if err != nil {
 			break
@@ -157,7 +167,7 @@ func (ss sequenceSlice) Less(i, j int) bool {
 	return ss[i].count > ss[j].count
 }
 
-func frequencyReport(dna []byte, length int) string {
+func frequencyReport(dna seqBits, length int) string {
 	var sortedSeqs sequenceSlice
 	counts := count32(dna, length)
 	for num, pointer := range counts {
@@ -180,10 +190,9 @@ func frequencyReport(dna []byte, length int) string {
 	return buf.String()
 }
 
-func sequenceReport(dna []byte, sequence seqString) string {
+func sequenceReport(dna seqBits, sequence seqString) string {
 	var pointer *counter
-	seq := []byte(sequence)
-	dnaToBits(seq)
+	seq := sequence.seqBits()
 	if len(sequence) <= 16 {
 		counts := count32(dna, len(sequence))
 		pointer = counts[compress32(seq)]
@@ -198,7 +207,7 @@ func sequenceReport(dna []byte, sequence seqString) string {
 	return fmt.Sprintf("%v\t%v", sequenceCount, sequence)
 }
 
-func count32(dna []byte, length int) map[uint32]*counter {
+func count32(dna seqBits, length int) map[uint32]*counter {
 	counts := make(map[uint32]*counter)
 	key := compress32(dna[0 : length-1])
 	mask := uint32(1)<<uint(2*length) - 1
@@ -215,7 +224,7 @@ func count32(dna []byte, length int) map[uint32]*counter {
 	return counts
 }
 
-func count64(dna []byte, length int) map[uint64]*counter {
+func count64(dna seqBits, length int) map[uint64]*counter {
 	counts := make(map[uint64]*counter)
 	key := compress64(dna[0 : length-1])
 	mask := uint64(1)<<uint(2*length) - 1
@@ -232,7 +241,7 @@ func count64(dna []byte, length int) map[uint64]*counter {
 	return counts
 }
 
-func compress64(sequence []byte) uint64 {
+func compress64(sequence seqBits) uint64 {
 	var num uint64
 	for _, char := range sequence {
 		num = num<<2 | uint64(char)
@@ -240,7 +249,7 @@ func compress64(sequence []byte) uint64 {
 	return num
 }
 
-func compress32(sequence []byte) uint32 {
+func compress32(sequence seqBits) uint32 {
 	var num uint32
 	for _, char := range sequence {
 		num = num<<2 | uint32(char)
@@ -249,7 +258,7 @@ func compress32(sequence []byte) uint32 {
 }
 
 func decompress32(num uint32, length int) seqString {
-	sequence := make([]byte, length)
+	sequence := make(seqChars, length)
 	for i := 0; i < length; i++ {
 		sequence[length-i-1] = "ACTG"[num&3]
 		num = num >> 2
