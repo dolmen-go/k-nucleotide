@@ -63,7 +63,7 @@ func (seq seqBits) seq64() seq64 {
 	return num
 }
 
-// seqString converts a seq32 to a huùan readable string
+// seqString converts a seq32 to a human readable string
 func (num seq32) seqString(length int) seqString {
 	sequence := make(seqChars, length)
 	for i := 0; i < length; i++ {
