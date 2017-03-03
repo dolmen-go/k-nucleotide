@@ -37,6 +37,42 @@ func (seq seqString) seqBits() seqBits {
 	return seqChars(seq).toBits()
 }
 
+// seq32 is a short (<= 16) sequence of nucleotides in a compact form
+// length is not embedded
+type seq32 uint32
+
+// seq64 is a short (17..32) sequence of nucleotides in a compact form
+// length is not embedded
+type seq64 uint64
+
+// seq32 converts a seqBits to a seq32
+func (seq seqBits) seq32() seq32 {
+	var num seq32
+	for _, char := range seq {
+		num = num<<2 | seq32(char)
+	}
+	return num
+}
+
+// seq64 converts a seqBits to a seq64
+func (seq seqBits) seq64() seq64 {
+	var num seq64
+	for _, char := range seq {
+		num = num<<2 | seq64(char)
+	}
+	return num
+}
+
+// seqString converts a seq32 to a huùan readable string
+func (num seq32) seqString(length int) seqString {
+	sequence := make(seqChars, length)
+	for i := 0; i < length; i++ {
+		sequence[length-i-1] = "ACTG"[num&3]
+		num = num >> 2
+	}
+	return seqString(sequence)
+}
+
 type job struct {
 	run    func(dna seqBits)
 	result chan string
@@ -173,7 +209,7 @@ func frequencyReport(dna seqBits, length int) string {
 	for num, pointer := range counts {
 		sortedSeqs = append(
 			sortedSeqs,
-			sequence{decompress32(num, length), *pointer},
+			sequence{num.seqString(length), *pointer},
 		)
 	}
 	sort.Sort(sortedSeqs)
@@ -195,10 +231,10 @@ func sequenceReport(dna seqBits, sequence seqString) string {
 	seq := sequence.seqBits()
 	if len(sequence) <= 16 {
 		counts := count32(dna, len(sequence))
-		pointer = counts[compress32(seq)]
+		pointer = counts[seq.seq32()]
 	} else {
 		counts := count64(dna, len(sequence))
-		pointer = counts[compress64(seq)]
+		pointer = counts[seq.seq64()]
 	}
 	var sequenceCount counter
 	if pointer != nil {
@@ -207,12 +243,12 @@ func sequenceReport(dna seqBits, sequence seqString) string {
 	return fmt.Sprintf("%v\t%v", sequenceCount, sequence)
 }
 
-func count32(dna seqBits, length int) map[uint32]*counter {
-	counts := make(map[uint32]*counter)
-	key := compress32(dna[0 : length-1])
-	mask := uint32(1)<<uint(2*length) - 1
+func count32(dna seqBits, length int) map[seq32]*counter {
+	counts := make(map[seq32]*counter)
+	key := dna[0 : length-1].seq32()
+	mask := seq32(1)<<uint(2*length) - 1
 	for index := length - 1; index < len(dna); index++ {
-		key = key<<2&mask | uint32(dna[index])
+		key = key<<2&mask | seq32(dna[index])
 		pointer := counts[key]
 		if pointer == nil {
 			n := counter(1)
@@ -224,12 +260,12 @@ func count32(dna seqBits, length int) map[uint32]*counter {
 	return counts
 }
 
-func count64(dna seqBits, length int) map[uint64]*counter {
-	counts := make(map[uint64]*counter)
-	key := compress64(dna[0 : length-1])
-	mask := uint64(1)<<uint(2*length) - 1
+func count64(dna seqBits, length int) map[seq64]*counter {
+	counts := make(map[seq64]*counter)
+	key := dna[0 : length-1].seq64()
+	mask := seq64(1)<<uint(2*length) - 1
 	for index := length - 1; index < len(dna); index++ {
-		key = key<<2&mask | uint64(dna[index])
+		key = key<<2&mask | seq64(dna[index])
 		pointer := counts[key]
 		if pointer == nil {
 			n := counter(1)
@@ -239,29 +275,4 @@ func count64(dna seqBits, length int) map[uint64]*counter {
 		}
 	}
 	return counts
-}
-
-func compress64(sequence seqBits) uint64 {
-	var num uint64
-	for _, char := range sequence {
-		num = num<<2 | uint64(char)
-	}
-	return num
-}
-
-func compress32(sequence seqBits) uint32 {
-	var num uint32
-	for _, char := range sequence {
-		num = num<<2 | uint32(char)
-	}
-	return num
-}
-
-func decompress32(num uint32, length int) seqString {
-	sequence := make(seqChars, length)
-	for i := 0; i < length; i++ {
-		sequence[length-i-1] = "ACTG"[num&3]
-		num = num >> 2
-	}
-	return seqString(sequence)
 }
