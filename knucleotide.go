@@ -16,6 +16,7 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"time"
 )
 
 // seqString is a sequence of nucleotides as a string: "ACGT..."
@@ -121,7 +122,8 @@ func makeJob(j func(dna seqBits) string) job {
 	r := make(chan string, 1)
 	return job{
 		run: func(dna seqBits) {
-			r <- j(dna)
+			start := time.Now()
+			r <- fmt.Sprintf("%sDuration: %s\n", j(dna), time.Now().Sub(start))
 		},
 		result: r,
 	}
