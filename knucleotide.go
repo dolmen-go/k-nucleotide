@@ -42,7 +42,7 @@ func sequenceReportJob(sequence string) job {
 	})
 }
 
-var jobs = []job{
+var jobs = [...]job{
 	frequencyReportJob(1),
 	frequencyReportJob(2),
 	sequenceReportJob("GGT"),
