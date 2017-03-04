@@ -112,6 +112,74 @@ func (dna seqBits) count64(length int) map[seq64]*counter {
 	return counts
 }
 
+func merge32(a, b map[seq32]*counter) {
+	for k, v := range b {
+		p := a[k]
+		if p == nil {
+			a[k] = v
+		} else {
+			*p += *v
+		}
+	}
+}
+
+func merge64(a, b map[seq64]*counter) {
+	for k, v := range b {
+		p := a[k]
+		if p == nil {
+			a[k] = v
+		} else {
+			*p += *v
+		}
+	}
+}
+
+func (dna seqBits) count32concur(length int) map[seq32]*counter {
+	l := len(dna)
+	workers := runtime.NumCPU() - 1
+	share := (l - length) / workers
+	start := 0
+	results := make(chan map[seq32]*counter, workers)
+	for i := workers; i > 1; i-- {
+		//fmt.Fprintln(os.Stderr, start, start+share)
+		go func(dna seqBits) {
+			results <- dna.count32(length)
+		}(dna[start : start+share])
+		start += share - length + 1
+	}
+	counts := dna[start:l].count32(length)
+	workers--
+	for workers > 0 {
+		merge32(counts, <-results)
+		workers--
+	}
+	close(results)
+	return counts
+}
+
+func (dna seqBits) count64concur(length int) map[seq64]*counter {
+	l := len(dna)
+	workers := runtime.NumCPU() - 1
+	share := (l - length) / workers
+	start := 0
+	results := make(chan map[seq64]*counter, workers)
+	for i := workers; i > 1; i-- {
+		fmt.Fprintln(os.Stderr, start, start+share)
+		go func(dna seqBits) {
+			results <- dna.count64(length)
+		}(dna[start : start+share])
+		start += share - length + 1
+	}
+	counts := dna[start:l].count64(length)
+	workers--
+	for workers > 0 {
+		merge64(counts, <-results)
+		workers--
+	}
+	close(results)
+	return counts
+}
+
 type job struct {
 	run    func(dna seqBits)
 	result chan string
@@ -238,7 +306,7 @@ func (ss seqCounts) Less(i, j int) bool {
 }
 
 func frequencyReport(dna seqBits, length int) string {
-	counts := dna.count32(length)
+	counts := dna.count32concur(length)
 	sortedSeqs := make(seqCounts, 0, len(counts))
 	for num, pointer := range counts {
 		sortedSeqs = append(
@@ -264,10 +332,10 @@ func sequenceReport(dna seqBits, sequence seqString) string {
 	var pointer *counter
 	seq := sequence.seqBits()
 	if len(sequence) <= 16 {
-		counts := dna.count32(len(sequence))
+		counts := dna.count32concur(len(sequence))
 		pointer = counts[seq.seq32()]
 	} else {
-		counts := dna.count64(len(sequence))
+		counts := dna.count64concur(len(sequence))
 		pointer = counts[seq.seq64()]
 	}
 	var sequenceCount counter
