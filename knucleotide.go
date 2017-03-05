@@ -86,7 +86,7 @@ type seqCount struct {
 // seqCounter is the common interface of seqCounts32 and seqCounts64
 type seqCounter interface {
 	countOf(seqString) counter
-	sortedCounts(length int) []seqCount
+	sortedCounts() []seqCount
 }
 
 func (dna seqBits) countSequences(length int) seqCounter {
@@ -97,12 +97,15 @@ func (dna seqBits) countSequences(length int) seqCounter {
 	}
 }
 
-type seqCounts32 map[seq32]*counter
+type seqCounts32 struct {
+	length   int
+	counters map[seq32]*counter
+}
 
 var _ seqCounter = seqCounts32{}
 
 func (dna seqBits) _count32(length int) seqCounts32 {
-	counts := make(seqCounts32)
+	counts := make(map[seq32]*counter)
 	key := dna[0 : length-1].seq32()
 	mask := seq32(1)<<uint(2*length) - 1
 	for index := length - 1; index < len(dna); index++ {
@@ -115,13 +118,16 @@ func (dna seqBits) _count32(length int) seqCounts32 {
 			*pointer++
 		}
 	}
-	return counts
+	return seqCounts32{length, counts}
 }
 
-type seqCounts64 map[seq64]*counter
+type seqCounts64 struct {
+	length   int
+	counters map[seq64]*counter
+}
 
 func (dna seqBits) _count64(length int) seqCounts64 {
-	counts := make(seqCounts64)
+	counts := make(map[seq64]*counter)
 	key := dna[0 : length-1].seq64()
 	mask := seq64(1)<<uint(2*length) - 1
 	for index := length - 1; index < len(dna); index++ {
@@ -134,11 +140,11 @@ func (dna seqBits) _count64(length int) seqCounts64 {
 			*pointer++
 		}
 	}
-	return counts
+	return seqCounts64{length, counts}
 }
 
 func (counts seqCounts32) countOf(seq seqString) counter {
-	p := counts[seq.seqBits().seq32()]
+	p := counts.counters[seq.seqBits().seq32()]
 	if p == nil {
 		return 0
 	}
@@ -146,17 +152,17 @@ func (counts seqCounts32) countOf(seq seqString) counter {
 }
 
 func (counts seqCounts64) countOf(seq seqString) counter {
-	p := counts[seq.seqBits().seq64()]
+	p := counts.counters[seq.seqBits().seq64()]
 	if p == nil {
 		return 0
 	}
 	return *p
 }
 
-func (counts seqCounts32) allCounts(length int) []seqCount {
-	list := make([]seqCount, 0, len(counts))
-	for key, counter := range counts {
-		list = append(list, seqCount{key.seqString(length), *counter})
+func (counts seqCounts32) allCounts() []seqCount {
+	list := make([]seqCount, 0, len(counts.counters))
+	for key, counter := range counts.counters {
+		list = append(list, seqCount{key.seqString(counts.length), *counter})
 	}
 	return list
 }
@@ -176,13 +182,13 @@ func (sc seqCountsDesc) Less(i, j int) bool {
 	return sc[i].count > sc[j].count
 }
 
-func (counts seqCounts32) sortedCounts(length int) []seqCount {
-	seqCounts := counts.allCounts(length)
+func (counts seqCounts32) sortedCounts() []seqCount {
+	seqCounts := counts.allCounts()
 	sort.Sort(seqCountsDesc(seqCounts))
 	return seqCounts
 }
 
-func (counts seqCounts64) sortedCounts(length int) []seqCount {
+func (counts seqCounts64) sortedCounts() []seqCount {
 	panic("not implemented")
 }
 
@@ -288,7 +294,7 @@ func readSequence(prefix string) (data seqChars) {
 
 func frequencyReport(dna seqBits, length int) string {
 	counts := dna.countSequences(length)
-	sequences := counts.sortedCounts(length)
+	sequences := counts.sortedCounts()
 
 	var buf bytes.Buffer
 	buf.Grow((8 + length) * len(sequences))
