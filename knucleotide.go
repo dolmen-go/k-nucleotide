@@ -78,10 +78,15 @@ func (num seq32) seqString(length int) seqString {
 
 type counter uint32
 
+type seqCount struct {
+	seq   seqString
+	count counter
+}
+
 // seqCounter is the common interface of seqCounts32 and seqCounts64
 type seqCounter interface {
 	countOf(seqString) counter
-	allCounts(length int) []seqCount
+	sortedCounts(length int) []seqCount
 }
 
 func (dna seqBits) countSequences(length int) seqCounter {
@@ -148,11 +153,6 @@ func (counts seqCounts64) countOf(seq seqString) counter {
 	return *p
 }
 
-type seqCount struct {
-	seq   seqString
-	count counter
-}
-
 func (counts seqCounts32) allCounts(length int) []seqCount {
 	list := make([]seqCount, 0, len(counts))
 	for key, counter := range counts {
@@ -161,7 +161,28 @@ func (counts seqCounts32) allCounts(length int) []seqCount {
 	return list
 }
 
-func (counts seqCounts64) allCounts(length int) []seqCount {
+// seqCountsDesc implements sort.Interface
+type seqCountsDesc []seqCount
+
+func (sc seqCountsDesc) Len() int { return len(sc) }
+
+func (sc seqCountsDesc) Swap(i, j int) { sc[i], sc[j] = sc[j], sc[i] }
+
+// Less order descending by count then seq
+func (sc seqCountsDesc) Less(i, j int) bool {
+	if sc[i].count == sc[j].count {
+		return sc[i].seq > sc[j].seq
+	}
+	return sc[i].count > sc[j].count
+}
+
+func (counts seqCounts32) sortedCounts(length int) []seqCount {
+	seqCounts := counts.allCounts(length)
+	sort.Sort(seqCountsDesc(seqCounts))
+	return seqCounts
+}
+
+func (counts seqCounts64) sortedCounts(length int) []seqCount {
 	panic("not implemented")
 }
 
@@ -271,25 +292,9 @@ func findSequence(prefix string) (in *bufio.Reader, lineCount int) {
 	return
 }
 
-// seqCounts implements sort.Interface
-type seqCounts []seqCount
-
-func (ss seqCounts) Len() int { return len(ss) }
-
-func (ss seqCounts) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
-
-// Less order descending by count then seq
-func (ss seqCounts) Less(i, j int) bool {
-	if ss[i].count == ss[j].count {
-		return ss[i].seq > ss[j].seq
-	}
-	return ss[i].count > ss[j].count
-}
-
 func frequencyReport(dna seqBits, length int) string {
 	counts := dna.countSequences(length)
-	sequences := counts.allCounts(length)
-	sort.Sort(seqCounts(sequences))
+	sequences := counts.sortedCounts(length)
 
 	var buf bytes.Buffer
 	buf.Grow((8 + length) * len(sequences))
