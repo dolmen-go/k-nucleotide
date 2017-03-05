@@ -224,7 +224,7 @@ var jobs = [...]job{
 }
 
 func main() {
-	dna := input()
+	dna := readSequence(">THREE").toBits()
 	scheduleJobs(dna)
 	for i := range jobs {
 		fmt.Println(<-jobs[i].result)
@@ -250,12 +250,22 @@ func worker(dna seqBits, command <-chan int) {
 	}
 }
 
-func input() (data seqBits) {
-	return readSequence(">THREE").toBits()
-}
-
 func readSequence(prefix string) (data seqChars) {
-	in, lineCount := findSequence(prefix)
+	// Find the sequence
+	pfx := []byte(prefix)
+	var lineCount int
+	in := bufio.NewReaderSize(os.Stdin, 1<<20)
+	for {
+		line, err := in.ReadSlice('\n')
+		if err != nil {
+			panic("read error")
+		}
+		lineCount++
+		if line[0] == '>' && bytes.HasPrefix(line, pfx) {
+			break
+		}
+	}
+	// Read the sequence
 	data = make(seqChars, 0, lineCount*61)
 	for {
 		line, err := in.ReadSlice('\n')
@@ -270,22 +280,6 @@ func readSequence(prefix string) (data seqChars) {
 		data = append(data, seqChars(line)...)
 
 		if err != nil {
-			break
-		}
-	}
-	return
-}
-
-func findSequence(prefix string) (in *bufio.Reader, lineCount int) {
-	pfx := []byte(prefix)
-	in = bufio.NewReaderSize(os.Stdin, 1<<20)
-	for {
-		line, err := in.ReadSlice('\n')
-		if err != nil {
-			panic("read error")
-		}
-		lineCount++
-		if line[0] == '>' && bytes.HasPrefix(line, pfx) {
 			break
 		}
 	}
