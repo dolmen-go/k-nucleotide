@@ -102,9 +102,9 @@ type seqCounts32 struct {
 	counters map[seq32]*counter
 }
 
-var _ seqCounter = seqCounts32{}
+var _ = []seqCounter{(*seqCounts32)(nil), (*seqCounts64)(nil)}
 
-func (dna seqBits) _count32(length int) seqCounts32 {
+func (dna seqBits) _count32(length int) *seqCounts32 {
 	counts := make(map[seq32]*counter)
 	key := dna[0 : length-1].seq32()
 	mask := seq32(1)<<uint(2*length) - 1
@@ -118,7 +118,7 @@ func (dna seqBits) _count32(length int) seqCounts32 {
 			*pointer++
 		}
 	}
-	return seqCounts32{length, counts}
+	return &seqCounts32{length, counts}
 }
 
 type seqCounts64 struct {
@@ -126,7 +126,7 @@ type seqCounts64 struct {
 	counters map[seq64]*counter
 }
 
-func (dna seqBits) _count64(length int) seqCounts64 {
+func (dna seqBits) _count64(length int) *seqCounts64 {
 	counts := make(map[seq64]*counter)
 	key := dna[0 : length-1].seq64()
 	mask := seq64(1)<<uint(2*length) - 1
@@ -140,10 +140,10 @@ func (dna seqBits) _count64(length int) seqCounts64 {
 			*pointer++
 		}
 	}
-	return seqCounts64{length, counts}
+	return &seqCounts64{length, counts}
 }
 
-func (counts seqCounts32) countOf(seq seqString) counter {
+func (counts *seqCounts32) countOf(seq seqString) counter {
 	p := counts.counters[seq.seqBits().seq32()]
 	if p == nil {
 		return 0
@@ -151,7 +151,7 @@ func (counts seqCounts32) countOf(seq seqString) counter {
 	return *p
 }
 
-func (counts seqCounts64) countOf(seq seqString) counter {
+func (counts *seqCounts64) countOf(seq seqString) counter {
 	p := counts.counters[seq.seqBits().seq64()]
 	if p == nil {
 		return 0
@@ -159,7 +159,7 @@ func (counts seqCounts64) countOf(seq seqString) counter {
 	return *p
 }
 
-func (counts seqCounts32) allCounts() []seqCount {
+func (counts *seqCounts32) allCounts() []seqCount {
 	list := make([]seqCount, 0, len(counts.counters))
 	for key, counter := range counts.counters {
 		list = append(list, seqCount{key.seqString(counts.length), *counter})
@@ -182,13 +182,13 @@ func (sc seqCountsDesc) Less(i, j int) bool {
 	return sc[i].count > sc[j].count
 }
 
-func (counts seqCounts32) sortedCounts() []seqCount {
+func (counts *seqCounts32) sortedCounts() []seqCount {
 	seqCounts := counts.allCounts()
 	sort.Sort(seqCountsDesc(seqCounts))
 	return seqCounts
 }
 
-func (counts seqCounts64) sortedCounts() []seqCount {
+func (_ *seqCounts64) sortedCounts() []seqCount {
 	panic("not implemented")
 }
 
