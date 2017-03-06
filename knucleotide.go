@@ -90,11 +90,30 @@ type seqCounter interface {
 }
 
 func (dna seqBits) countSequences(length int) seqCounter {
+	if len((*seqCountsArray)(nil).counters)>>uint(1+length) > 0 {
+		return dna._countArray(length)
+	}
 	if length <= 16 {
 		return dna._count32(length)
 	} else {
 		return dna._count64(length)
 	}
+}
+
+type seqCountsArray struct {
+	length   int
+	counters [4096]counter
+}
+
+func (dna seqBits) _countArray(length int) *seqCountsArray {
+	c := seqCountsArray{length: length}
+	key := dna[0 : length-1].seq32()
+	mask := seq32(1)<<uint(2*length) - 1
+	for index := length - 1; index < len(dna); index++ {
+		key = key<<2&mask | seq32(dna[index])
+		c.counters[key]++
+	}
+	return &c
 }
 
 type seqCounts32 struct {
@@ -143,6 +162,10 @@ func (dna seqBits) _count64(length int) *seqCounts64 {
 	return &seqCounts64{length, counts}
 }
 
+func (counts *seqCountsArray) countOf(seq seqString) counter {
+	return counts.counters[seq.seqBits().seq32()]
+}
+
 func (counts *seqCounts32) countOf(seq seqString) counter {
 	p := counts.counters[seq.seqBits().seq32()]
 	if p == nil {
@@ -165,6 +188,22 @@ func (counts *seqCounts32) allCounts() []seqCount {
 		list = append(list, seqCount{key.seqString(counts.length), *counter})
 	}
 	return list
+}
+
+func (counts *seqCountsArray) sortedCounts() []seqCount {
+	var seqCounts []seqCount
+	end := int(1) << uint(2*counts.length)
+	for i := 0; i < end; i++ {
+		if counts.counters[i] == 0 {
+			continue
+		}
+		seqCounts = append(seqCounts, seqCount{
+			seq:   seq32(i).seqString(int(counts.length)),
+			count: counts.counters[i],
+		})
+	}
+	sort.Sort(seqCountsDesc(seqCounts))
+	return seqCounts
 }
 
 // seqCountsDesc implements sort.Interface
