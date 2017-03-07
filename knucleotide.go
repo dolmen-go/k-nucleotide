@@ -226,7 +226,12 @@ var jobs = [...]job{
 func main() {
 	dna := readSequence(">THREE").toBits()
 
-	queue := make(chan func(), len(jobs))
+	queueLen := runtime.NumCPU()
+	if queueLen < len(jobs) {
+		queueLen = len(jobs)
+	}
+	queue := make(chan func(), queueLen)
+	// Start one worker per CPU
 	for i := runtime.NumCPU(); i > 0; i-- {
 		go func(q <-chan func()) {
 			for j := range q {
