@@ -225,29 +225,29 @@ var jobs = [...]job{
 
 func main() {
 	dna := readSequence(">THREE").toBits()
-	scheduleJobs(dna)
+
+	queue := make(chan func(), len(jobs))
+	for i := runtime.NumCPU(); i > 0; i-- {
+		go func(q <-chan func()) {
+			for j := range q {
+				j()
+			}
+		}(queue)
+	}
+
+	// Queue all jobs
+	for i := range jobs {
+		// longest job first, shortest job last
+		n := len(jobs) - 1 - i
+		queue <- func() { jobs[n].run(dna) }
+	}
+
+	// Wait for results
 	for i := range jobs {
 		fmt.Println(<-jobs[i].result)
 	}
-}
 
-func scheduleJobs(dna seqBits) {
-	command := make(chan int, len(jobs))
-	for i := runtime.NumCPU(); i > 0; i-- {
-		go worker(dna, command)
-	}
-
-	for i := range jobs {
-		// longest job first, shortest job last
-		command <- len(jobs) - 1 - i
-	}
-	close(command)
-}
-
-func worker(dna seqBits, command <-chan int) {
-	for k := range command {
-		jobs[k].run(dna)
-	}
+	close(queue)
 }
 
 func readSequence(prefix string) (data seqChars) {
